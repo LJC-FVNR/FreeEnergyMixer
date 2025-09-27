@@ -21,14 +21,21 @@ x = torch.randn(B, T, D, device=device, dtype=dtype)
 cfg = FreeEnergyMixerConfig(
     n_embd=D, n_head=H,
     prior_type="softmax",
-    softmax_backend="auto",   # SDPA (works when v_dim != qk_dim); use "flash" only if compatible
-    fem_ratio=0.5,            # value path width ≈ D/2
-    p_t_to_fem_ratio=4.0,     # total Q+K size relative to fem_dim
-    use_temperature=True,
-    use_lse=True,
-    use_outer_gate=True,
-    use_conv=True,
-    use_rope=True
+    softmax_backend="auto",
+
+    # Recommended sizing that matches the parameter budget of standard attention:
+    #   (A) fem_ratio = 0.5, p_t_to_fem_ratio = 4.0
+    #       → fem_dim ≈ D/2; total (Q+K) ≈ 2D  (same Q+K size as standard attention)
+    #   (B) fem_ratio = 2/3, p_t_to_fem_ratio = 2.0
+    #       → fem_dim ≈ 2D/3; total (Q+K) ≈ 4D/3  (more balanced: wider value path, lighter Q/K)
+    fem_ratio=2/3,            # value path width ≈ 2D/3
+    p_t_to_fem_ratio=2.0,     # total Q+K size relative to fem_dim
+
+    use_temperature=True,     # enable FEM free-energy branch (β + LSE)
+    use_lse=True,             # keep LSE branch when β=1
+    use_outer_gate=True,      # multiplicative outer gate
+    use_conv=True,            # lightweight time-decay conditioning (TDC)
+    use_rope=True             # apply RoPE to Q/K
 )
 
 layer = FreeEnergyMixer(cfg).to(device=device, dtype=dtype)
