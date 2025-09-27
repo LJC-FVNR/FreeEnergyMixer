@@ -403,7 +403,7 @@ def _gla_read_fla(x: torch.Tensor, q: torch.Tensor, k: torch.Tensor, v: torch.Te
         return _gla_read_naive(x, q, k, v, W_decay, eps)
     q = _phi(q, eps)
     k = _phi(k, eps)
-    g = -_phi(W_decay(x), eps)  # (B,T,H)
+    g = -_phi(W_decay(x), eps).unsqueeze(-1).expand(-1, -1, -1, k.size(-1))  # (B,T,H)
     v_aug = torch.cat([v, torch.ones_like(v[:, :, :, :1])], dim=-1)
     out_aug, _ = chunk_gla(q=q, k=k, v=v_aug, g=g, initial_state=None, output_final_state=False, cu_seqlens=None)
     num, den = out_aug[:, :, :, :-1], out_aug[:, :, :, -1:] + 1e-5
